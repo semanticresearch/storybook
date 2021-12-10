@@ -97,28 +97,41 @@ const ActionKey = styled.code(({ theme }) => ({
   pointerEvents: 'none',
 }));
 
-const Highlight: FunctionComponent<{ match?: Match }> = React.memo(({ children, match }) => {
-  if (!match) return <>{children}</>;
-  const { value, indices } = match;
-  const { nodes: result } = indices.reduce<{ cursor: number; nodes: ReactNode[] }>(
-    ({ cursor, nodes }, [start, end], index, { length }) => {
-      /* eslint-disable react/no-array-index-key */
-      nodes.push(<span key={`${index}-0`}>{value.slice(cursor, start)}</span>);
-      nodes.push(<Mark key={`${index}-1`}>{value.slice(start, end + 1)}</Mark>);
-      if (index === length - 1) {
-        nodes.push(<span key={`${index}-2`}>{value.slice(end + 1)}</span>);
-      }
-      /* eslint-enable react/no-array-index-key */
-      return { cursor: end + 1, nodes };
-    },
-    { cursor: 0, nodes: [] }
-  );
-  return <>{result}</>;
-});
+const Highlight: FunctionComponent<{ match?: Match; query?: string; }> = React.memo(
+  ({ children, match, query }) => {
+    if (!match) return <>{children}</>;
+    const { value, indices } = match;
+    const { nodes: result } = indices.reduce<{ cursor: number; nodes: ReactNode[] }>(
+      ({ cursor, nodes }, [start, end], index, { length }) => {
+        const strMarked = value.slice(start, end + 1);
+        let isMarked = false;
+        if (query) {
+          const strList = query.split(' ');
+          if (strList.includes(strMarked)) {
+            isMarked = true;
+          }
+        }
+        /* eslint-disable react/no-array-index-key */
+        nodes.push(<span key={`${index}-0`}>{value.slice(cursor, start)}</span>);
+        if (isMarked) {
+          nodes.push(<Mark key={`${index}-1`}>{strMarked}</Mark>);
+        } else {
+          nodes.push(<span key={`${index}-1`}>{strMarked}</span>);
+        }
+        if (index === length - 1) {
+          nodes.push(<span key={`${index}-2`}>{value.slice(end + 1)}</span>);
+        }
+        /* eslint-enable react/no-array-index-key */
+        return { cursor: end + 1, nodes };
+      },
+      { cursor: 0, nodes: [] }
+    );
+    return <>{result}</>;
+  });
 
 const Result: FunctionComponent<
-  SearchResult & { icon: string; isHighlighted: boolean; onClick: MouseEventHandler }
-> = React.memo(({ item, matches, icon, onClick, ...props }) => {
+  SearchResult & { icon: string; isHighlighted: boolean; onClick: MouseEventHandler; query?: string; }
+> = React.memo(({ query, item, matches, icon, onClick, ...props }) => {
   const click: MouseEventHandler = useCallback(
     (event) => {
       event.preventDefault();
@@ -132,13 +145,13 @@ const Result: FunctionComponent<
   const label = (
     <div className="search-result-item--label">
       <strong>
-        <Highlight match={nameMatch}>{item.name}</Highlight>
+        <Highlight match={nameMatch} query={query}>{item.name}</Highlight>
       </strong>
       <Path>
         {item.path.map((group, index) => (
           // eslint-disable-next-line react/no-array-index-key
           <span key={index}>
-            <Highlight match={pathMatches.find((match: Match) => match.arrayIndex === index)}>
+            <Highlight match={pathMatches.find((match: Match) => match.arrayIndex === index)} query={query}>
               {group}
             </Highlight>
           </span>
@@ -169,7 +182,7 @@ const Result: FunctionComponent<
 });
 
 export const SearchResults: FunctionComponent<{
-  query: string;
+  query?: string;
   results: DownshiftItem[];
   closeMenu: (cb?: () => void) => void;
   getMenuProps: ControllerStateAndHelpers<DownshiftItem>['getMenuProps'];
@@ -269,6 +282,7 @@ export const SearchResults: FunctionComponent<{
               {...getItemProps({ key, index, item: result })}
               isHighlighted={highlightedIndex === index}
               className="search-result-item"
+              query={query}
             />
           );
         })}
