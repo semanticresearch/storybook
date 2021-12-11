@@ -97,16 +97,16 @@ const ActionKey = styled.code(({ theme }) => ({
   pointerEvents: 'none',
 }));
 
-const Highlight: FunctionComponent<{ match?: Match; query?: string; }> = React.memo(
+const Highlight: FunctionComponent<{ match?: Match; query?: string }> = React.memo(
   ({ children, match, query }) => {
     if (!match) return <>{children}</>;
     const { value, indices } = match;
     const { nodes: result } = indices.reduce<{ cursor: number; nodes: ReactNode[] }>(
       ({ cursor, nodes }, [start, end], index, { length }) => {
-        const strMarked = value.slice(start, end + 1);
+        const strMarked = value.slice(start, end + 1).toLowerCase();
         let isMarked = false;
         if (query) {
-          const strList = query.split(' ');
+          const strList = query.split(' ').map((str) => str.toLowerCase());
           if (strList.includes(strMarked)) {
             isMarked = true;
           }
@@ -127,10 +127,16 @@ const Highlight: FunctionComponent<{ match?: Match; query?: string; }> = React.m
       { cursor: 0, nodes: [] }
     );
     return <>{result}</>;
-  });
+  }
+);
 
 const Result: FunctionComponent<
-  SearchResult & { icon: string; isHighlighted: boolean; onClick: MouseEventHandler; query?: string; }
+  SearchResult & {
+    icon: string;
+    isHighlighted: boolean;
+    onClick: MouseEventHandler;
+    query?: string;
+  }
 > = React.memo(({ query, item, matches, icon, onClick, ...props }) => {
   const click: MouseEventHandler = useCallback(
     (event) => {
@@ -145,13 +151,18 @@ const Result: FunctionComponent<
   const label = (
     <div className="search-result-item--label">
       <strong>
-        <Highlight match={nameMatch} query={query}>{item.name}</Highlight>
+        <Highlight match={nameMatch} query={query}>
+          {item.name}
+        </Highlight>
       </strong>
       <Path>
         {item.path.map((group, index) => (
           // eslint-disable-next-line react/no-array-index-key
           <span key={index}>
-            <Highlight match={pathMatches.find((match: Match) => match.arrayIndex === index)} query={query}>
+            <Highlight
+              match={pathMatches.find((match: Match) => match.arrayIndex === index)}
+              query={query}
+            >
               {group}
             </Highlight>
           </span>
